@@ -196,7 +196,8 @@ def main(args):
         SEED_WORDS = SEED_WORDS.unsqueeze(1)
         SEED_WORDS = SEED_WORDS.unsqueeze(1)
         print(SEED_WORDS.shape)
-
+    get_seed_embedding(SEED_WORDS, seed_words)
+    
     def init_k_model():
         INPUT_DIM = len(TEXT.vocab)
         EMBEDDING_DIM = 200
