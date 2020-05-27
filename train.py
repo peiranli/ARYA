@@ -25,31 +25,21 @@ def main(args):
             aspect = lst[1].lower()
             aspects.append(aspect)
     print(aspects)
-
-
+    
     TEXT = data.Field(tokenize=tokenizer)
-
     train_data = data.TabularDataset(path=args.dir+args.train, format='csv',fields=[('text', TEXT)])
-
     LABEL = data.LabelField()
-
     test_data = data.TabularDataset(path=args.dir+args.test, format='csv',fields=[('text', TEXT), ('label', LABEL)])
-
     embedding = torchtext.vocab.Vectors(args.dir+args.embedding)
 
     MAX_VOCAB_SIZE = 10000
-
-    TEXT.build_vocab(train_data,
-                     max_size = MAX_VOCAB_SIZE,
-                     vectors = embedding,
+    TEXT.build_vocab(train_data, 
+                     max_size = MAX_VOCAB_SIZE, 
+                     vectors = embedding, 
                      unk_init = torch.Tensor.normal_)
-
     LABEL.build_vocab(test_data)
-
     print(LABEL.vocab.stoi)
-
     print(LABEL.vocab.itos)
-
     BATCH_SIZE = 256
 
     if torch.cuda.is_available():
@@ -61,31 +51,25 @@ def main(args):
     #device = torch.device('cpu')
 
     train_iterator = data.BucketIterator(
-        train_data,
-        batch_size = BATCH_SIZE,
+        train_data, 
+        batch_size = BATCH_SIZE, 
         device = device,
         sort=False)
-
     test_iterator = data.BucketIterator(
-        test_data,
-        batch_size = len(test_data),
+        test_data, 
+        batch_size = len(test_data), 
         device = device,
         sort=False)
 
     LABEL_KPLUS = data.LabelField()
-
     test_kplus_data = data.TabularDataset(path=args.dir+args.test_kplus, format='csv',fields=[('text', TEXT), ('label', LABEL_KPLUS)])
-
     test_kplus_iterator = data.BucketIterator(
-        test_kplus_data,
-        batch_size = len(test_kplus_data),
+        test_kplus_data, 
+        batch_size = len(test_kplus_data), 
         device = device,
         sort=False)
-
     LABEL_KPLUS.build_vocab(test_kplus_data)
-
     print(LABEL_KPLUS.vocab.stoi)
-
 
     from sklearn import metrics
 
@@ -95,36 +79,23 @@ def main(args):
         acc = metrics.accuracy_score(max_label.cpu().numpy(), max_preds.cpu().numpy())
         return acc
 
-
     def train(model, pseudolabel, iterator, optimizer):
-
         criterion = nn.KLDivLoss()
-
         epoch_loss = 0
         epoch_acc = 0
-
         model.train()
         pseudolabel.eval()
 
         for batch in iterator:
-
             optimizer.zero_grad()
-
-            probs, _ = model(batch.text)  #[batch size, output dim]
-
+            probs, _ = model(batch.text)  #[batch size, output dim] 
             p, q = pseudolabel(batch.text)
-
             loss = criterion(torch.log(probs), p.detach())
-
             acc = train_metric(probs, p.detach())
-
             loss.backward()
-
             optimizer.step()
-
             epoch_loss += loss.item()
             epoch_acc += acc
-
         return epoch_loss / len(iterator), epoch_acc / len(iterator)
 
     def evaluate(model, eval_data, LABEL):
@@ -227,7 +198,7 @@ def main(args):
         return SEED_WORDS
     SEED_WORDS = get_seed_embedding(seed_words)
     print(SEED_WORDS.shape)
-
+    
     def init_kmodel(SEED_WORDS):
         INPUT_DIM = len(TEXT.vocab)
         EMBEDDING_DIM = 200
@@ -258,22 +229,17 @@ def main(args):
         k_pseudolabel.embedding.weight.data[UNK_IDX] = torch.zeros(EMBEDDING_DIM)
         k_pseudolabel.embedding.weight.data[PAD_IDX] = torch.zeros(EMBEDDING_DIM)
         return k_model, k_pseudolabel
-
+    
     k_model, k_pseudolabel = init_kmodel(SEED_WORDS)
     k_model_optimizer = optim.Adam(filter(lambda p: p.requires_grad, k_model.parameters()))
 
     N_EPOCHS = 5
     for epoch in range(N_EPOCHS):
-
         print("epoch: ",epoch+1)
-
         train_loss, train_acc = train(k_model, k_pseudolabel, train_iterator, k_model_optimizer)
-
         print("training loss: ",train_loss)
         print("training accuracy: ",train_acc)
-
         valid_acc, valid_f1 = evaluate(k_model, test_data, LABEL)
-
         print("validation accuracy: ",valid_acc)
         print('validation F1:',valid_f1)
     torch.cuda.empty_cache()
@@ -284,7 +250,7 @@ def main(args):
         pred = predict(k_model, e.text)
         preds.append(pred)
         labels.append(LABEL.vocab.stoi[e.label])
-
+        
     def log_info(labels, preds):
         print(metrics.accuracy_score(labels, preds))
         logging.debug(metrics.accuracy_score(labels, preds))
@@ -338,7 +304,7 @@ def main(args):
         kplus_model = CNN(INPUT_DIM, EMBEDDING_DIM, N_FILTERS, FILTER_SIZES, OUTPUT_DIM, DROPOUT, PAD_IDX)
         kplus_model = kplus_model.to(device)
 
-        kplus_pseudolabel = PseudoLabelPlus(INPUT_DIM, EMBEDDING_DIM, OUTPUT_DIM-1, OUTPUT_DIM-1, PAD_IDX, SEED_WORDS, k_model, threshold)
+        kplus_pseudolabel = PseudoLabelPlus(INPUT_DIM, EMBEDDING_DIM, OUTPUT_DIM-1, OUTPUT_DIM-1, PAD_IDX, SEED_WORDS, k_model, threshold, device)
         kplus_pseudolabel = kplus_pseudolabel.to(device)
         kplus_pseudolabel.eval()
 
@@ -360,21 +326,14 @@ def main(args):
     kplus_model_optimizer = optim.Adam(filter(lambda p: p.requires_grad, kplus_model.parameters()))
 
     N_EPOCHS = 5
-
     for epoch in range(N_EPOCHS):
-
         print("epoch: ",epoch+1)
-
         train_loss, train_acc = train(kplus_model, kplus_pseudolabel, train_iterator, kplus_model_optimizer)
-
         print("training loss: ",train_loss)
         print("training accuracy: ",train_acc)
-
         valid_acc, valid_f1 = evaluate(kplus_model, test_kplus_data, LABEL_KPLUS)
-
         print("validation accuracy: ",valid_acc)
         print('validation F1:',valid_f1)
-
     torch.cuda.empty_cache()
 
     preds = []
@@ -401,7 +360,7 @@ def main(args):
     stop_words_fr = list(set(stopwords.words('french')))
     stop_words_sp = list(set(stopwords.words('spanish')))
     stop_words = set(stop_words_en+stop_words_fr+stop_words_sp)
-
+    
     def update_seeds(seed_words_d, no_filtering, no_tuning):
         tf1 = collections.defaultdict(dict)
         pool1 = collections.defaultdict(dict)
@@ -429,7 +388,7 @@ def main(args):
                 e.text[i] = tmp
             lst = list(zip(words, kls))
             lst.sort(key=lambda x: x[1], reverse=True)
-
+            
             #print(lst[:len_])
             if not no_tuning:
                 for i in range(len(lst)//4):
@@ -438,7 +397,7 @@ def main(args):
                         if lst[i][0] not in pool1[label]:
                             pool1[label][lst[i][0]] = 0
                         pool1[label][lst[i][0]] += lst[i][1]
-
+                        
         pops1 = collections.defaultdict(dict)
         aspects1 = list(tf1.keys())
         for i in range(len(aspects1)):
@@ -457,7 +416,7 @@ def main(args):
                     if word in tf1[aspects1[j]]:
                         max_ = max(max_, tf1[aspects1[j]][word])
                 dists1[aspects1[i]][word] = tf1[aspects1[i]][word] / max_
-
+        
         scores1 = collections.defaultdict(dict)
         for i in range(len(aspects1)):
             if no_tuning:
@@ -470,7 +429,7 @@ def main(args):
         candidates1 = collections.defaultdict(list)
         for aspect in aspects1:
             candidates1[aspect] = sorted(scores1[aspect].items(), key=lambda x: x[1], reverse=True)
-
+            
         commons1 = set()
         aspects1 = list(candidates1.keys())
         for i in range(len(aspects1)-1):
@@ -509,16 +468,16 @@ def main(args):
                     e.text[i] = tmp
                 lst = list(zip(words, kls))
                 lst.sort(key=lambda x: x[1], reverse=True)
-
+                
                 #print(lst[:len_])
-
+                
                 for i in range(len(lst)//4):
                     threshold = 1e-2
                     if lst[i][1] > threshold:
                         if lst[i][0] not in pool2[label]:
                             pool2[label][lst[i][0]] = 0
                         pool2[label][lst[i][0]] += lst[i][1]
-
+                
             pops2 = collections.defaultdict(dict)
             aspects2 = list(tf2.keys())
             for i in range(len(aspects2)):
@@ -528,7 +487,7 @@ def main(args):
                         if word in tf2[aspects2[j]]:
                             sum_ += tf2[aspects2[j]][word]
                     pops2[aspects2[i]][word] = tf2[aspects2[i]][word] / sum_
-
+                    
             dists2 = collections.defaultdict(dict)
             for i in range(len(aspects2)):
                 for word in tf2[aspects2[i]]:
@@ -537,7 +496,7 @@ def main(args):
                         if word in tf2[aspects2[j]]:
                             max_ = max(max_, tf2[aspects2[j]][word])
                     dists2[aspects2[i]][word] = tf2[aspects2[i]][word] / max_
-
+                    
             scores2 = collections.defaultdict(dict)
             for i in range(len(aspects2)):
                 for word in pool2[aspects2[i]]:
@@ -547,7 +506,7 @@ def main(args):
 
             for aspect in aspects2:
                 candidates2[aspect] = sorted(scores2[aspect].items(), key=lambda x: x[1], reverse=True)
-
+                
             print(candidates2['miscellaneous'])
 
             for i in range(len(candidates2['miscellaneous'])):
@@ -581,11 +540,11 @@ def main(args):
             for c in commons2:
                 if c in seed_words_d[aspect]:
                     seed_words_d[aspect].remove(c)
-
-
+        
+            
     update_seeds(seed_words_d, args.no_filtering, args.no_tuning)
     print(seed_words_d)
-
+    
     for k in seed_words_d:
         seed_words_d[k] = list(seed_words_d[k])
     for k in seed_words_d:
@@ -601,16 +560,11 @@ def main(args):
 
     N_EPOCHS = 5
     for epoch in range(N_EPOCHS):
-
         print("epoch: ",epoch+1)
-
         train_loss, train_acc = train(k_model, k_pseudolabel, train_iterator, k_model_optimizer)
-
         print("training loss: ",train_loss)
         print("training accuracy: ",train_acc)
-
         valid_acc, valid_f1 = evaluate(k_model, test_data, LABEL)
-
         print("validation accuracy: ",valid_acc)
         print('validation F1:',valid_f1)
     torch.cuda.empty_cache()
@@ -622,7 +576,7 @@ def main(args):
         preds.append(pred)
         labels.append(LABEL.vocab.stoi[e.label])
     log_info(labels, preds)
-
+    
     logging.debug("k pseudolabel")
     preds = []
     labels = []
@@ -631,7 +585,7 @@ def main(args):
         preds.append(pred)
         labels.append(LABEL.vocab.stoi[e.label])
     log_info(labels, preds)
-
+    
     lst1 = []
     lst2 = []
     for e in test_kplus_data.examples:
@@ -654,16 +608,11 @@ def main(args):
 
     N_EPOCHS = 5
     for epoch in range(N_EPOCHS):
-
         print("epoch: ",epoch+1)
-
         train_loss, train_acc = train(kplus_model, kplus_pseudolabel, train_iterator, kplus_model_optimizer)
-
         print("training loss: ",train_loss)
         print("training accuracy: ",train_acc)
-
         valid_acc, valid_f1 = evaluate(kplus_model, test_kplus_data, LABEL_KPLUS)
-
         print("validation accuracy: ",valid_acc)
         print('validation F1:',valid_f1)
     torch.cuda.empty_cache()
@@ -690,14 +639,14 @@ def main(args):
 
         import copy
         seed_words_d_copy = copy.deepcopy(seed_words_d)
-
+        
         update_seeds(seed_words_d, args.no_filtering, args.no_tuning)
         print(seed_words_d)
-
+        
         seed_words = sorted(seed_words_d.items(), key=lambda x:LABEL.vocab.stoi[x[0]])
         print(seed_words)
         logging.debug(seed_words)
-
+        
         if seed_words_d == seed_words_d_copy:
             break
 
@@ -707,16 +656,11 @@ def main(args):
 
         N_EPOCHS = 5
         for epoch in range(N_EPOCHS):
-
             print("epoch: ",epoch+1)
-
             train_loss, train_acc = train(k_model, k_pseudolabel, train_iterator, k_model_optimizer)
-
             print("training loss: ",train_loss)
             print("training accuracy: ",train_acc)
-
             valid_acc, valid_f1 = evaluate(k_model, test_data, LABEL)
-
             print("validation accuracy: ",valid_acc)
             print('validation F1:',valid_f1)
         torch.cuda.empty_cache()
@@ -754,22 +698,17 @@ def main(args):
         threshold = np.quantile(a, args.quantile)/100
         print("threshold:", threshold)
         logging.debug("threshold:"+str(threshold))
-
+        
         kplus_model, kplus_pseudolabel = init_kplus_model(SEED_WORDS)
         kplus_model_optimizer = optim.Adam(filter(lambda p: p.requires_grad, kplus_model.parameters()))
 
         N_EPOCHS_2 = 5
         for epoch in range(N_EPOCHS_2):
-
             print("epoch: ",epoch+1)
-
             train_loss, train_acc = train(kplus_model, kplus_pseudolabel, train_iterator, kplus_model_optimizer)
-
             print("training loss: ",train_loss)
             print("training accuracy: ",train_acc)
-
             valid_acc, valid_f1 = evaluate(kplus_model, test_kplus_data, LABEL_KPLUS)
-
             print("validation accuracy: ",valid_acc)
             print('validation F1:',valid_f1)
         torch.cuda.empty_cache()
@@ -781,7 +720,7 @@ def main(args):
             preds.append(pred)
             labels.append(LABEL_KPLUS.vocab.stoi[e.label])
         log_info(labels, preds)
-
+        
         logging.debug("kplus pseudolabel")
         preds = []
         labels = []
@@ -792,7 +731,7 @@ def main(args):
         log_info(labels, preds)
 
 
-
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, default='yelp')
