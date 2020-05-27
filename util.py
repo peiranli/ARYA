@@ -1,11 +1,5 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-import math
 import re
 import spacy
-from sklearn import metrics
 
 nlp = spacy.load('en')
 MAX_CHARS = 20000

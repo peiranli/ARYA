@@ -138,7 +138,7 @@ class PseudoLabel(nn.Module):
         
         p = torch.div(q2fs, sum_)
             
-        return q, p
+        return p, q
 
 class PseudoLabelPlus(nn.Module):
     def __init__(self, vocab_size, embedding_dim, n_filters, output_dim, pad_idx, seed_words, k_model, threshold, device):
@@ -264,4 +264,4 @@ class PseudoLabelPlus(nn.Module):
         
         p = torch.div(q2fs, sum_)
             
-        return q_kplus, p
+        return p, q_kplus
