@@ -80,22 +80,34 @@ def main(args):
         return acc
 
     def train(model, pseudolabel, iterator, optimizer):
+
         criterion = nn.KLDivLoss()
+
         epoch_loss = 0
         epoch_acc = 0
+
         model.train()
         pseudolabel.eval()
 
         for batch in iterator:
+
             optimizer.zero_grad()
+
             probs, _ = model(batch.text)  #[batch size, output dim] 
+
             p, q = pseudolabel(batch.text)
+
             loss = criterion(torch.log(probs), p.detach())
+
             acc = train_metric(probs, p.detach())
+
             loss.backward()
+
             optimizer.step()
+
             epoch_loss += loss.item()
             epoch_acc += acc
+
         return epoch_loss / len(iterator), epoch_acc / len(iterator)
 
     def evaluate(model, eval_data, LABEL):
@@ -235,11 +247,16 @@ def main(args):
 
     N_EPOCHS = 5
     for epoch in range(N_EPOCHS):
+
         print("epoch: ",epoch+1)
+
         train_loss, train_acc = train(k_model, k_pseudolabel, train_iterator, k_model_optimizer)
+
         print("training loss: ",train_loss)
         print("training accuracy: ",train_acc)
+
         valid_acc, valid_f1 = evaluate(k_model, test_data, LABEL)
+
         print("validation accuracy: ",valid_acc)
         print('validation F1:',valid_f1)
     torch.cuda.empty_cache()
@@ -326,14 +343,21 @@ def main(args):
     kplus_model_optimizer = optim.Adam(filter(lambda p: p.requires_grad, kplus_model.parameters()))
 
     N_EPOCHS = 5
+
     for epoch in range(N_EPOCHS):
+
         print("epoch: ",epoch+1)
+
         train_loss, train_acc = train(kplus_model, kplus_pseudolabel, train_iterator, kplus_model_optimizer)
+
         print("training loss: ",train_loss)
         print("training accuracy: ",train_acc)
+
         valid_acc, valid_f1 = evaluate(kplus_model, test_kplus_data, LABEL_KPLUS)
+
         print("validation accuracy: ",valid_acc)
         print('validation F1:',valid_f1)
+
     torch.cuda.empty_cache()
 
     preds = []
@@ -555,16 +579,21 @@ def main(args):
     logging.debug(seed_words)
 
     get_seed_embedding(seed_words)
-    k_model, k_pseudolabel = init_k_model(SEED_WORDS)
+    k_model, k_pseudolabel = init_kmodel(SEED_WORDS)
     k_model_optimizer = optim.Adam(filter(lambda p: p.requires_grad, k_model.parameters()))
 
     N_EPOCHS = 5
     for epoch in range(N_EPOCHS):
+
         print("epoch: ",epoch+1)
+
         train_loss, train_acc = train(k_model, k_pseudolabel, train_iterator, k_model_optimizer)
+
         print("training loss: ",train_loss)
         print("training accuracy: ",train_acc)
+
         valid_acc, valid_f1 = evaluate(k_model, test_data, LABEL)
+
         print("validation accuracy: ",valid_acc)
         print('validation F1:',valid_f1)
     torch.cuda.empty_cache()
@@ -603,16 +632,21 @@ def main(args):
     print("threshold:", threshold)
     logging.debug("threshold:"+str(threshold))
 
-    kplus_model, kplus_pseudolabel = init_kplus_model(SEED_WORDS)
+    kplus_model, kplus_pseudolabel = init_kplusmodel(SEED_WORDS)
     kplus_model_optimizer = optim.Adam(filter(lambda p: p.requires_grad, kplus_model.parameters()))
 
     N_EPOCHS = 5
     for epoch in range(N_EPOCHS):
+
         print("epoch: ",epoch+1)
+
         train_loss, train_acc = train(kplus_model, kplus_pseudolabel, train_iterator, kplus_model_optimizer)
+
         print("training loss: ",train_loss)
         print("training accuracy: ",train_acc)
+
         valid_acc, valid_f1 = evaluate(kplus_model, test_kplus_data, LABEL_KPLUS)
+
         print("validation accuracy: ",valid_acc)
         print('validation F1:',valid_f1)
     torch.cuda.empty_cache()
@@ -651,16 +685,21 @@ def main(args):
             break
 
         get_seed_embedding(seed_words)
-        k_model, k_pseudolabel = init_k_model(SEED_WORDS)
+        k_model, k_pseudolabel = init_kmodel(SEED_WORDS)
         k_model_optimizer = optim.Adam(filter(lambda p: p.requires_grad, k_model.parameters()))
 
         N_EPOCHS = 5
         for epoch in range(N_EPOCHS):
+
             print("epoch: ",epoch+1)
+
             train_loss, train_acc = train(k_model, k_pseudolabel, train_iterator, k_model_optimizer)
+
             print("training loss: ",train_loss)
             print("training accuracy: ",train_acc)
+
             valid_acc, valid_f1 = evaluate(k_model, test_data, LABEL)
+
             print("validation accuracy: ",valid_acc)
             print('validation F1:',valid_f1)
         torch.cuda.empty_cache()
@@ -699,16 +738,21 @@ def main(args):
         print("threshold:", threshold)
         logging.debug("threshold:"+str(threshold))
         
-        kplus_model, kplus_pseudolabel = init_kplus_model(SEED_WORDS)
+        kplus_model, kplus_pseudolabel = init_kplusmodel(SEED_WORDS)
         kplus_model_optimizer = optim.Adam(filter(lambda p: p.requires_grad, kplus_model.parameters()))
 
         N_EPOCHS_2 = 5
         for epoch in range(N_EPOCHS_2):
+
             print("epoch: ",epoch+1)
+
             train_loss, train_acc = train(kplus_model, kplus_pseudolabel, train_iterator, kplus_model_optimizer)
+
             print("training loss: ",train_loss)
             print("training accuracy: ",train_acc)
+
             valid_acc, valid_f1 = evaluate(kplus_model, test_kplus_data, LABEL_KPLUS)
+
             print("validation accuracy: ",valid_acc)
             print('validation F1:',valid_f1)
         torch.cuda.empty_cache()
