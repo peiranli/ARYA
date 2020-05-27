@@ -181,7 +181,7 @@ def main(args):
     time = int(datetime.datetime.now().timestamp())
 
     import logging
-    logging.basicConfig(filename='outputs/'+str(time)+'train-yelp.log',level=logging.DEBUG)
+    logging.basicConfig(filename='outputs/'+str(time)+'train-'+args.dataset+'.log',level=logging.DEBUG)
 
     import collections
     seed_words_d = collections.defaultdict(set)
