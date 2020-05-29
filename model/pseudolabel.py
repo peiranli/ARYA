@@ -141,7 +141,7 @@ class PseudoLabel(nn.Module):
         return p, q
 
 class PseudoLabelPlus(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, n_filters, output_dim, pad_idx, seed_words, k_model, threshold, device):
+    def __init__(self, vocab_size, embedding_dim, n_filters, output_dim, pad_idx, seed_words, k_model, threshold, device, LABEL_stoi):
         
         super().__init__()
         
@@ -167,6 +167,7 @@ class PseudoLabelPlus(nn.Module):
         
         self.threshold = threshold
         self.device = device
+        self.LABEL_stoi = LABEL_stoi
         
     def forward(self, text):
         
@@ -252,7 +253,9 @@ class PseudoLabelPlus(nn.Module):
         
         q_k = q*(1-q_null)
         
-        q_kplus = torch.cat([q_k[:,:2], q_null, q_k[:, 2:]], dim=1)
+        misc_idx = self.LABEL_stoi['miscellaneous']
+        
+        q_kplus = torch.cat([q_k[:,:misc_idx], q_null, q_k[:, misc_idx:]], dim=1)
         
         #q_kplus = [batch size, output dim+1]
         
