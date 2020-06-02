@@ -4,10 +4,9 @@ import torch.optim as optim
 import torch.nn.functional as F
 import math
 
-def get_q_null(x, threshold):
-    #threshold = 0.2
+def get_q_null(x, threshold, upperbound):
     if x >= threshold:
-        return ((x-threshold)/(1-threshold)).item()
+        return ((x-threshold)/(upperbound-threshold)).item()
     else:
         return 0
 
@@ -141,7 +140,7 @@ class PseudoLabel(nn.Module):
         return p, q
 
 class PseudoLabelPlus(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, n_filters, output_dim, pad_idx, seed_words, k_model, threshold, device, LABEL_stoi):
+    def __init__(self, vocab_size, embedding_dim, n_filters, output_dim, pad_idx, seed_words, k_model, threshold, upperbound, device, LABEL_stoi):
         
         super().__init__()
         
@@ -166,6 +165,7 @@ class PseudoLabelPlus(nn.Module):
         self.k_model.eval()
         
         self.threshold = threshold
+        self.upperbound = upperbound
         self.device = device
         self.LABEL_stoi = LABEL_stoi
         
@@ -247,7 +247,7 @@ class PseudoLabelPlus(nn.Module):
         
         #q_null = F.sigmoid(h_norm).unsqueeze(1)
         
-        q_null = torch.FloatTensor(list(map(lambda p: get_q_null(p, self.threshold), h_norm))).unsqueeze(1).to(self.device)
+        q_null = torch.FloatTensor(list(map(lambda p: get_q_null(p, self.threshold, self.upperbound), h_norm))).unsqueeze(1).to(self.device)
         
         #q_null = [batch size, 1]
         
