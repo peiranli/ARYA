@@ -18,7 +18,7 @@ from sklearn.metrics import confusion_matrix
 def main(args):
 
     aspects = []
-    with open(args.dir+args.aspects) as f:
+    with open(args.dataset+"/"+args.dataset+"_aspects.txt") as f:
         for line in f:
             lst = line.split()
             idx = lst[0]
@@ -27,12 +27,12 @@ def main(args):
     print(aspects)
     
     TEXT = data.Field(tokenize=tokenizer)
-    train_data = data.TabularDataset(path=args.dir+args.train, format='csv',fields=[('text', TEXT)])
+    train_data = data.TabularDataset(path=args.dataset+"/"+args.dataset+"_train.csv", format='csv',fields=[('text', TEXT)])
     LABEL = data.LabelField()
-    test_data = data.TabularDataset(path=args.dir+args.test, format='csv',fields=[('text', TEXT), ('label', LABEL)])
-    embedding = torchtext.vocab.Vectors(args.dir+args.embedding)
+    test_data = data.TabularDataset(path=args.dataset+"/"+args.dataset+"_test.csv", format='csv',fields=[('text', TEXT), ('label', LABEL)])
+    embedding = torchtext.vocab.Vectors(args.dataset+"/"+args.dataset+".200d.txt")
 
-    MAX_VOCAB_SIZE = 10000
+    MAX_VOCAB_SIZE = 40000
     TEXT.build_vocab(train_data, 
                      max_size = MAX_VOCAB_SIZE, 
                      vectors = embedding, 
@@ -40,7 +40,7 @@ def main(args):
     LABEL.build_vocab(test_data)
     print(LABEL.vocab.stoi)
     print(LABEL.vocab.itos)
-    BATCH_SIZE = 256
+    BATCH_SIZE = int(len(train_data)/500)
 
     if torch.cuda.is_available():
         torch.cuda.set_device(6)
@@ -62,7 +62,7 @@ def main(args):
         sort=False)
 
     LABEL_KPLUS = data.LabelField()
-    test_kplus_data = data.TabularDataset(path=args.dir+args.test_kplus, format='csv',fields=[('text', TEXT), ('label', LABEL_KPLUS)])
+    test_kplus_data = data.TabularDataset(path=args.dataset+"/"+args.dataset+"_test_kplus.csv", format='csv',fields=[('text', TEXT), ('label', LABEL_KPLUS)])
     test_kplus_iterator = data.BucketIterator(
         test_kplus_data, 
         batch_size = len(test_kplus_data), 
@@ -182,10 +182,12 @@ def main(args):
 
     import logging
     logging.basicConfig(filename='outputs/'+str(time)+'train-'+args.dataset+'.log',level=logging.DEBUG)
+    logging.debug("no filtering: "+str(args.no_filtering))
+    logging.debug("no tuning: "+str(args.no_tuning))
 
     import collections
     seed_words_d = collections.defaultdict(set)
-    with open(args.dir+args.seedwords) as f:
+    with open(args.dataset+"/"+args.dataset+"_seeds.txt") as f:
         for line in f:
             lst = line.split()
             w1 = lst[0].lower()
@@ -291,21 +293,25 @@ def main(args):
         preds.append(pred)
         labels.append(LABEL.vocab.stoi[e.label])
     log_info(labels, preds)
-
-    lst1 = []
-    lst2 = []
-    for e in test_kplus_data.examples:
-        qs,_ = get_qs(k_pseudolabel, e.text)
-        preds,_ = get_p(k_model, e.text)
-        vs = [v.item() for v in preds.squeeze(0) if v.item() != 0]
-        h_norm = (-1/math.log(preds.shape[1]))*sum([v*math.log(v)for v in vs])
-        if e.label == 'miscellaneous':
-            lst1.append(int(h_norm*100))
-        else:
+    
+    def compute_threshold():
+        lst1 = []
+        lst2 = []
+        for e in train_data.examples:
+            qs,_ = get_qs(k_pseudolabel, e.text)
+            preds,_ = get_p(k_model, e.text)
+            vs = [v.item() for v in preds.squeeze(0) if v.item() != 0]
+            h_norm = (-1/math.log(preds.shape[1]))*sum([v*math.log(v)for v in vs])
+            #if e.label == 'miscellaneous':
+                #lst1.append(int(h_norm*100))
+            #else:
             lst2.append(int(h_norm*100))
 
-    a = np.array(lst2)
-    threshold = np.quantile(a, args.quantile)/100
+        a = np.array(lst2)
+        threshold = np.quantile(a, args.quantile)/100
+        return threshold
+    threshold = compute_threshold()
+    #threshold = 0.2
     print("threshold:", threshold)
     logging.debug("threshold:"+str(threshold))
 
@@ -321,7 +327,7 @@ def main(args):
         kplus_model = CNN(INPUT_DIM, EMBEDDING_DIM, N_FILTERS, FILTER_SIZES, OUTPUT_DIM, DROPOUT, PAD_IDX)
         kplus_model = kplus_model.to(device)
 
-        kplus_pseudolabel = PseudoLabelPlus(INPUT_DIM, EMBEDDING_DIM, OUTPUT_DIM-1, OUTPUT_DIM-1, PAD_IDX, SEED_WORDS, k_model, threshold, device)
+        kplus_pseudolabel = PseudoLabelPlus(INPUT_DIM, EMBEDDING_DIM, OUTPUT_DIM-1, OUTPUT_DIM-1, PAD_IDX, SEED_WORDS, k_model, threshold, args.upperbound, device, LABEL_KPLUS.vocab.stoi)
         kplus_pseudolabel = kplus_pseudolabel.to(device)
         kplus_pseudolabel.eval()
 
@@ -615,20 +621,8 @@ def main(args):
         labels.append(LABEL.vocab.stoi[e.label])
     log_info(labels, preds)
     
-    lst1 = []
-    lst2 = []
-    for e in test_kplus_data.examples:
-        qs,_ = get_qs(k_pseudolabel, e.text)
-        preds,_ = get_p(k_model, e.text)
-        vs = [v.item() for v in preds.squeeze(0) if v.item() != 0]
-        h_norm = (-1/math.log(preds.shape[1]))*sum([v*math.log(v)for v in vs])
-        if e.label == 'miscellaneous':
-            lst1.append(int(h_norm*100))
-        else:
-            lst2.append(int(h_norm*100))
-
-    a = np.array(lst2)
-    threshold = np.quantile(a, args.quantile)/100
+    threshold = compute_threshold()
+    #threshold = 0.2
     print("threshold:", threshold)
     logging.debug("threshold:"+str(threshold))
 
@@ -721,20 +715,8 @@ def main(args):
             labels.append(LABEL.vocab.stoi[e.label])
         log_info(labels, preds)
 
-        lst1 = []
-        lst2 = []
-        for e in test_kplus_data.examples:
-            qs,_ = get_qs(k_pseudolabel, e.text)
-            preds,_ = get_p(k_model, e.text)
-            vs = [v.item() for v in preds.squeeze(0) if v.item() != 0]
-            h_norm = (-1/math.log(preds.shape[1]))*sum([v*math.log(v)for v in vs])
-            if e.label == 'miscellaneous':
-                lst1.append(int(h_norm*100))
-            else:
-                lst2.append(int(h_norm*100))
-
-        a = np.array(lst2)
-        threshold = np.quantile(a, args.quantile)/100
+        threshold = compute_threshold()
+        #threshold = 0.2
         print("threshold:", threshold)
         logging.debug("threshold:"+str(threshold))
         
@@ -778,17 +760,11 @@ def main(args):
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, default='yelp')
-    parser.add_argument('--dir', type=str, default='yelp/')
-    parser.add_argument('--aspects', type=str, default='yelp_aspects.txt')
-    parser.add_argument('--train', type=str, default='yelp_train.csv')
-    parser.add_argument('--test', type=str, default='yelp_test.csv')
-    parser.add_argument('--test_kplus', type=str, default='yelp_test_kplus.csv')
-    parser.add_argument('--seedwords', type=str, default='yelp_seed_aspect_words_wovalue.txt')
-    parser.add_argument('--embedding', type=str, default='yelp.200d.txt')
+    parser.add_argument('--dataset', type=str, default='restaurant')
     parser.add_argument('--quantile', type=float, default=0.65)
     parser.add_argument('--score_threshold', type=float, default=0.6)
     parser.add_argument('--seedword_limit', type=int, default=10)
+    parser.add_argument('--upperbound', type=float, default=1)
     parser.add_argument('--no_filtering', action='store_true')
     parser.add_argument('--no_tuning', action='store_true')
     args = parser.parse_args()
