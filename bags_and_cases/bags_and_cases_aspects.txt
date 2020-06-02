@@ -1,0 +1,8 @@
+0	Compartments
+1	Customer_service
+2	Handles
+3	Looks
+4	Price
+5	Protection
+6	Quality
+7	Size_Fit
