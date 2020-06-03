@@ -1,6 +1,4 @@
-import gzip
-import gensim 
-import logging
+import gensim
 import argparse
 
 class MyCorpus(object):
