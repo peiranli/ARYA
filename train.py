@@ -14,6 +14,8 @@ from model.cnn import *
 from scipy import stats
 import numpy as np
 from sklearn.metrics import confusion_matrix
+import os
+
 
 def main(args):
 
@@ -178,6 +180,9 @@ def main(args):
 
     import datetime
     time = int(datetime.datetime.now().timestamp())
+
+    if not os.path.exists('outputs'):
+        os.makedirs('outputs')
 
     import logging
     logging.basicConfig(filename='outputs/'+str(time)+'train-'+args.dataset+'.log',level=logging.DEBUG)
