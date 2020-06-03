@@ -1,7 +1,7 @@
-0	support
-1	os
-2	display
-3	battery
-4	mouse
-5	software
-6	keyboard
+Support
+OS
+Display
+Battery
+Mouse
+Software
+Keyboard

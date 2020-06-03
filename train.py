@@ -21,8 +21,7 @@ def main(args):
     with open(args.dataset+"/"+args.dataset+"_aspects.txt") as f:
         for line in f:
             lst = line.split()
-            idx = lst[0]
-            aspect = lst[1].lower()
+            aspect = lst[0].lower()
             aspects.append(aspect)
     print(aspects)
     

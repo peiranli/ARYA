@@ -1,5 +1,5 @@
-1	Location
-2	Drinks
-3	Food
-4	Ambience
-5	Service
+Location
+Drinks
+Food
+Ambience
+Service
