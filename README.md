@@ -32,7 +32,7 @@ The preprint version can be accessed at: [https://arxiv.org/abs/2004.14555](http
 - **K Aspect Test CSV File**
   - Example: ```restaurant/restaurant_test.csv```
     - Two columns (segment, aspect) per line.
-    - Aspects **not** including `miscellaneous` aspect.
+    - Aspects **NOT** including `miscellaneous` aspect.
     - Must be named as ```dataset_test.csv```.
 - **K+1 Aspect Test CSV File**
   - Example: ```restaurant/restaurant_test_kplus.csv```
