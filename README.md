@@ -5,6 +5,8 @@ Domain-Specific Texts.
 
 The preprint version can be accessed at: [https://arxiv.org/abs/2004.14555](https://arxiv.org/abs/2004.14555)
 
+This paper is submitted to SDM 2021. The title is "Misc"-Aware Weakly Supervised Aspect Classification and the authors are Peiran Li*, Fang Guo*, Jingbo Shang. * means equal contribution. 
+
 - [Model](#model)
 - [Training](#training)
 	- [Required Inputs](#required-inputs)
