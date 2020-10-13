@@ -1,11 +1,12 @@
 # ARYA
 
-This is the source code for our arXiv User-Guided Aspect Classification for
-Domain-Specific Texts.
+This is the source code for our arXiv and SDM 2021 submission:
+
+1.Peiran Li, Fang Guo, and Jingbo Shang. 2020. User-Guided Aspect Classification for Domain-Specific Texts. arXiv preprint arXiv:2004.14555 (2020).
+
+2.Peiran Li, Fang Guo, and Jingbo Shang. 2021. "Misc"-Aware Weakly Supervised Aspect Classification. In SIAM International Conference on Data Mining (SDM21).
 
 The preprint version can be accessed at: [https://arxiv.org/abs/2004.14555](https://arxiv.org/abs/2004.14555)
-
-This paper is submitted to SDM 2021. The title is "Misc"-Aware Weakly Supervised Aspect Classification and the authors are Peiran Li*, Fang Guo*, Jingbo Shang. * means equal contribution. 
 
 - [Model](#model)
 - [Training](#training)
