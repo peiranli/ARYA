@@ -17,7 +17,7 @@ The preprint version can be accessed at: [https://arxiv.org/abs/2004.14555](http
 
 ## Model
 
-![ARYA-Framework](docs/ARYA_SDM21_Framework.png)
+![ARYA-Framework](docs/ARYA_SDM21_Framework.jpg)
 
 ## Training
 
